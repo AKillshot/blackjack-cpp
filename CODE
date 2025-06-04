@@ -1,0 +1,318 @@
+#include <string> 
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <ctime>
+#include <random>
+#include <cctype>
+#include <limits>
+// Define the Suit and Face enums for the card colors and values
+enum class Suit { Hearts, Diamonds, Clubs, Spades };
+enum class Face { Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King };
+// Define the Card class to represent a paper
+class Card {
+public:
+	// Constructor to initialize a paper with its color and value
+	Card(Suit suit, Face face) : suit(suit), face(face) {}
+	Suit getSuit() const { return suit; } // Returns the color of the paper
+	Face getFace() const { return face; } // Returns the paper value
+	int getValue() const { // Returns the paper value
+		if (face == Face::Ace) {
+			return 11;
+		}
+		else {
+			return (static_cast<int>(face) >= 10 ? 10 : static_cast<int>(face) + 1);
+		}
+	}
+private:
+	Suit suit; // The color of the paper
+	Face face; // The value of the paper
+};
+// Define the Deck class to represent a deck
+class Deck {
+public:
+	// Constructor for creating the deck and shuffling it
+	Deck() {
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 13; ++j) {
+				cards.push_back(Card(static_cast<Suit>(i), static_cast<Face>(j)));
+			}
+		}
+		shuffle(); // Shuffle the deck
+	}
+	// Method to shuffle the cards
+	void shuffle() {
+		std::srand(static_cast<unsigned int>(std::time(0)));
+		std::shuffle(cards.begin(), cards.end(), std::default_random_engine(static_cast<unsigned int>(std::rand())));
+	}
+	// Method to extract a card from the end of the deck
+	Card draw() {
+		Card card = cards.back();
+		cards.pop_back();
+		return card;
+	}
+	bool isEmpty() const { return cards.empty(); } // Checks if deck is empty
+private:
+	std::vector<Card> cards; // The cards of the deck
+};
+// Displays the selected cards
+void displayCards(const std::vector<Card>& cards) {
+	for (const Card& card : cards) {
+		std::cout << "[" << static_cast<char>(static_cast<int>(card.getSuit()) + 'A') << ", " << static_cast<char>(static_cast<int>(card.getFace()) + 'A') << "] ";
+	}
+	std::cout << std::endl;
+}
+// The main function
+int main() {
+	char choice; // The user's choice
+	std::vector<Card> dealerCards; // The dealer maps
+	std::vector<std::string> playerNames; // The names of the players
+	std::vector<int> playerWallets; // Players' portfolios
+	std::vector<int> playerScores; // The players' scores
+	int dealerScore = 0; // The dealer's points
+	int numPlayers = 0; // The number of players
+	while (true) {
+		while (true) {
+			// Displays the menu and prompts the user to select
+			std::cout << "Menu:\n1. Play Game\n2. Display Cards\n3. About\n4. Rules of Blackjack\n5. Exit\n";
+			std::cin >> choice;
+			if (choice < '1' || choice > '5' || std::cin.fail()) {
+				std::cout << "Invalid choice. Please try again.\n";
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+				continue;
+			}
+			break;
+		}
+		switch (choice) {
+		case '1': { // Select game
+			// Clears the data for a new game
+			playerNames.clear();
+			playerWallets.clear();
+			playerScores.clear();
+			dealerCards.clear();
+			dealerScore = 0;
+			// Sets the player's portfolio amount to $100
+			const int startingWalletAmount = 100;
+			int modeChoice;
+			while (true) {
+				std::cout << "Choose your mode:\n1. Easy\n2. Medium\n3. Hard\n";
+				std::string modeInput;
+				std::cin >> modeInput;
+				bool onlyDigits = true;
+				for (char c : modeInput) {
+					if (!std::isdigit(c)) {
+						onlyDigits = false;
+						break;
+					}
+				}
+				if (!onlyDigits) {
+					std::cout << "Invalid mode. Please choose 1, 2, or 3." << std::endl;
+					continue;
+				}
+				modeChoice = std::stoi(modeInput);
+				if (modeChoice >= 1 && modeChoice <= 3) {
+					break;
+				}
+				std::cout << "Invalid mode. Please choose 1, 2, or 3." << std::endl;
+			}
+			while (true) {
+				std::cout << "Choose number of players (1-6): ";
+				std::cin >> numPlayers;
+				if (numPlayers >= 1 && numPlayers <= 6) {
+					break;
+				}
+				std::cout << "Invalid number of players. Please choose between 1 and 6." << std::endl;
+				std::cin.clear();
+				std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			}
+			// Inserts the players' names and initializes their portfolios
+			for (int i = 0; i < numPlayers; ++i) {
+				std::string playerName;
+				std::cout << "Enter name for Player " << i + 1 << ": ";
+				std::cin >> playerName;
+				playerNames.push_back(playerName);
+				playerWallets.push_back(startingWalletAmount);
+				playerScores.push_back(0); // Initializes each player's points to 0
+			}
+			std::cout << "Welcome to Blackjack game!" << std::endl;
+			// Displays players' portfolios
+			for (int i = 0; i < numPlayers; ++i) {
+				std::cout << "Player " << playerNames[i] << ", you have $" << playerWallets[i] << " in your wallet." << std::endl;
+			}
+			// Creates the deck
+			Deck deck;
+			while (true) {
+				// Checks for insufficient funds for each player
+				bool insufficientFunds = false;
+				for (int i = 0; i < numPlayers; ++i) {
+					if (playerWallets[i] <= 0) {
+						std::cout << playerNames[i] << " has insufficient funds. Removing from the game." << std::endl;
+						playerNames.erase(playerNames.begin() + i);
+						playerWallets.erase(playerWallets.begin() + i);
+						playerScores.erase(playerScores.begin() + i);
+						--numPlayers;
+						insufficientFunds = true;
+						break;
+					}
+				}
+				if (insufficientFunds) {
+					if (numPlayers == 0) {
+						std::cout << "All players have insufficient funds. Game over." << std::endl;
+						return 0;
+					}
+					continue;
+				}
+				// Select bet amount from each player
+				std::vector<int> betAmounts(numPlayers, 0); // Initializes the bet amounts for each player
+				for (int i = 0; i < numPlayers; ++i) {
+					while (true) {
+						if (playerWallets[i] <= 0) {
+							std::cout << playerNames[i] << " has insufficient funds. Removing from the game." << std::endl;
+							playerNames.erase(playerNames.begin() + i);
+							playerWallets.erase(playerWallets.begin() + i);
+							playerScores.erase(playerScores.begin() + i);
+							--numPlayers;
+							break; // Exits loop if player has insufficient funds
+						}
+						std::cout << playerNames[i] << ", enter your bet amount (up to $" << playerWallets[i] << "): ";
+						std::cin >> betAmounts[i];
+						if (betAmounts[i] > 0 && betAmounts[i] <= playerWallets[i]) {
+							playerWallets[i] -= betAmounts[i]; // Removes the bet amount from the player's portfolio
+							break; // Exit the loop if the bet amount is valid
+						}
+						else {
+							std::cout << "Invalid bet amount. Please enter a valid amount up to $" << playerWallets[i] << "." << std::endl;
+							std::cin.clear();
+							std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+						}
+					}
+				}
+				// Game logic for each player's turn
+				for (int i = 0; i < numPlayers; ++i) {
+					std::vector<Card> playerHand;
+					int playerScore = 0;
+					std::cout << "Player " << playerNames[i] << "'s turn:" << std::endl;
+					do {
+						Card drawnCard = deck.draw();
+						playerHand.push_back(drawnCard);
+						playerScore += drawnCard.getValue();
+						std::cout << "Player " << playerNames[i] << "'s cards: ";
+						displayCards(playerHand);
+						std::cout << "Player " << playerNames[i] << "'s score: " << playerScore << std::endl;
+						if (playerScore > 21) {
+							std::cout << "Player " << playerNames[i] << " busted!" << std::endl;
+							break;
+						}
+						char draw;
+						while (true) {
+							std::cout << "Player " << playerNames[i] << ", draw another card? (y/n): ";
+							std::cin >> draw;
+							if (tolower(draw) == 'y' || tolower(draw) == 'n') {
+								break;
+							}
+							std::cout << "Invalid input. Please enter 'y' or 'n'." << std::endl;
+						}
+						if (tolower(draw) == 'n') {
+							break;
+						}
+					} while (true);
+					// Displays each player's rank
+					std::cout << "Player " << playerNames[i] << "'s score: " << playerScore << std::endl;
+					playerScores[i] = playerScore;
+				}
+				// Game logic for the dealer's turn
+				while (dealerScore < 17) {
+					Card drawnCard = deck.draw();
+					dealerCards.push_back(drawnCard);
+					dealerScore += drawnCard.getValue();
+				}
+				std::cout << "Dealer's cards: ";
+				displayCards(dealerCards);
+				std::cout << "Dealer's score: " << dealerScore << std::endl;
+				// Game results
+				bool dealerBusted = dealerScore > 21;
+				if (dealerBusted) {
+					std::cout << "Dealer busted! All remaining players win!" << std::endl;
+					for (int i = 0; i < numPlayers; ++i) {
+						if (playerScores[i] <= 21) {
+							std::cout << "Player " << playerNames[i] << " wins!" << std::endl;
+							playerWallets[i] += betAmounts[i] * 2; // Player wins double bet amount
+						}
+					}
+				}
+				else {
+					for (int i = 0; i < numPlayers; ++i) {
+						if (playerWallets[i] > 0) {
+							if (playerScores[i] > 21) {
+								std::cout << "Player " << playerNames[i] << " busted! Dealer wins!" << std::endl;
+							}
+							else if (playerScores[i] > dealerScore) {
+								std::cout << "Player " << playerNames[i] << " wins!" << std::endl;
+								playerWallets[i] += betAmounts[i] * 2; // Player wins double bet amount
+							}
+							else if (playerScores[i] < dealerScore) {
+								std::cout << "Player " << playerNames[i] << " loses!" << std::endl;
+							}
+							else {
+								std::cout << "Player " << playerNames[i] << " ties with the dealer!" << std::endl;
+								playerWallets[i] += betAmounts[i]; // Returns the bet amount to the player in case of a tie
+							}
+						}
+					}
+				}
+				// Displays the results for the dealer
+				if (dealerBusted) {
+					std::cout << "Dealer busted! All remaining players win!" << std::endl;
+				}
+				else {
+					for (int i = 0; i < numPlayers; ++i) {
+						if (playerWallets[i] > 0) {
+							if (playerScores[i] <= 21 && playerScores[i] > dealerScore) {
+								std::cout << "Dealer loses against Player " << playerNames[i] << "!" << std::endl;
+							}
+						}
+					}
+				}
+				// Clears the cards and dealer rank for the next round
+				dealerCards.clear();
+				dealerScore = 0;
+				char continueGame;
+				std::cout << "Do you want to play another round? (y/n): ";
+				std::cin >> continueGame;
+				if (tolower(continueGame) != 'y') {
+					return 0;
+				}
+			}
+			break;
+		}
+		case '2': // Choose to display cards
+			// Displays player scores and dealer cards
+			for (size_t i = 0; i < playerScores.size(); ++i) {
+				std::cout << "Player " << playerNames[i] << "'s score: " << playerScores[i] << std::endl;
+			}
+			std::cout << "Dealer's cards: ";
+			displayCards(dealerCards);
+			std::cout << "Dealer's score: " << dealerScore << std::endl;
+			break;
+		case '3': // Option about
+			std::cout << "About: Made by Andreas Kokkinos creator of Blackjack game.\n";
+			break;
+		case '4': // Select Blackjack rules
+			std::cout << "Rules of Blackjack:\n";
+			// Includes Blackjack rules
+			std::cout << "1. The goal is to beat the dealer's hand without going over 21.\n";
+			std::cout << "2. Face cards are worth 10. Aces are worth 1 or 11, whichever makes a better hand.\n";
+			std::cout << "3. Each player starts with two cards. One of the dealer's cards is hidden until the end.\n";
+			std::cout << "4. To 'Hit' is to ask for another card. To 'Stand' is to hold your total and end your turn.\n";
+			std::cout << "5. If you go over 21 you bust, and the dealer wins regardless of the dealer's hand.\n";
+			std::cout << "6. If you are dealt 21 from the start (Ace & 10), you got a blackjack.\n";
+			std::cout << "7. Blackjack pays 3 to 2, providing that the dealer does not also have Blackjack.\n";
+			break;
+		case '5':// Exit the game
+			std::cout << "Exiting the game. Goodbye!\n";
+			return 0;
+		}
+	}
+	return 0;
+}//End of program
